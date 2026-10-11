@@ -5,3 +5,5 @@
 @media print{.topbar,.hero,.tabs,.heading-actions,.individual-tools,footer,.button{display:none!important}body{background:#fff}.view{display:none!important}.view.active{display:block!important}.panel,.metric,.table-wrap{box-shadow:none;break-inside:avoid}main{max-width:none;padding:0}.report-layout{grid-template-columns:1fr 1fr}}
 
 .small-metric{font-size:16px!important;line-height:1.5!important}
+
+.survey-only-main{max-width:1000px;padding-top:34px}.standalone-heading{align-items:center;margin-bottom:23px}.standalone-heading h2{margin-bottom:7px}.survey-only-main footer{margin-top:36px}
