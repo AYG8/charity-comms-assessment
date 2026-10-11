@@ -4,7 +4,7 @@
 
 ## تشغيل محلي
 
-افتح `index.html` في متصفح حديث للتحليل، أو `survey.html?v=20261011-4` لصفحة الاستطلاع المستقلة. رابط صفحة الاستطلاع المنشور: `https://ayg8.github.io/charity-comms-assessment/survey.html?v=20261011-4`. يمكن تشغيله بخادم ملفات محلي عند الحاجة. لا يحتاج إلى بناء أو مكتبات JavaScript.
+افتح `index.html` في متصفح حديث للتحليل، أو `survey.html?v=20261011-5` لصفحة الاستطلاع المستقلة. رابط صفحة الاستطلاع المنشور: `https://ayg8.github.io/charity-comms-assessment/survey.html?v=20261011-5`. يمكن تشغيله بخادم ملفات محلي عند الحاجة. لا يحتاج إلى بناء أو مكتبات JavaScript.
 
 ## النشر على GitHub Pages
 
