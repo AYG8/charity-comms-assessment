@@ -16,7 +16,11 @@ function doGet(e) {
     if (action === 'health') {
       payload = { ok: true, service: 'charity-comms-assessment' };
     } else if (action === 'list') {
-      payload = { ok: true, records: readRecords_() };
+      const requiredKey = PropertiesService.getScriptProperties().getProperty('DASHBOARD_READ_KEY');
+      const suppliedKey = String((e.parameter && e.parameter.key) || '');
+      payload = requiredKey && suppliedKey === requiredKey
+        ? { ok: true, records: readRecords_() }
+        : { ok: false, error: requiredKey ? 'unauthorized' : 'dashboard_key_not_configured' };
     } else {
       payload = { ok: false, error: 'unknown_action' };
     }
