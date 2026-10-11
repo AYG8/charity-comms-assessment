@@ -36,3 +36,31 @@ footer{font-size:12px}
 .toast{font-size:14px}
 @media(max-width:800px){.hero h1{font-size:36px}.section-heading h2{font-size:26px}.tab{font-size:14px}.top-actions .button{font-size:13px}.question-text{font-size:15px}.choice span{font-size:13px}.bar-label,.bar-score{font-size:12px}}
 @media(max-width:480px){.brand strong{font-size:14px}.brand small{font-size:11px}.top-actions .button{font-size:12px;padding:9px 11px}.hero h1{font-size:32px}.tab{font-size:13px}.section-heading h2{font-size:24px}.question-text{font-size:14px}.choice span{font-size:12px;padding:9px 10px}.field{font-size:13px}input:not([type=checkbox]),select,textarea{font-size:14px}.needs-grid label span{font-size:12px}}
+
+/* نسخة مقروءة بوضوح على الشاشات الكبيرة والصغيرة */
+body{font-size:18px}
+.brand strong{font-size:19px}.brand small{font-size:15px}
+.privacy-tag{font-size:15px}
+.button{font-size:17px;padding:14px 20px}
+.hero h1{font-size:46px}.hero-copy>p:not(.eyebrow){font-size:18px}.hero .eyebrow,.eyebrow{font-size:15px}
+.hero-note{font-size:15px}.hero-note span{font-size:14px}
+.tab{font-size:17px}.tab span{font-size:14px}
+.section-heading h2{font-size:32px}.section-heading p:not(.eyebrow){font-size:17px}
+.progress-caption{font-size:15px}
+.card-title h3,.panel h3{font-size:21px}.card-title p{font-size:15px}
+.field{font-size:17px}input:not([type=checkbox]),select,textarea{font-size:17px;padding:15px 16px}
+.question-text{font-size:19px;line-height:1.9}.question-text small{font-size:15px}
+.weight{font-size:14px}.choice span{font-size:16px;padding:12px 14px}
+.needs-field legend{font-size:17px}.needs-grid label span{font-size:16px;min-height:52px}
+.consent{font-size:15px}.submit-row #formMessage{font-size:15px}
+footer{font-size:14px}
+.metric span{font-size:15px}.metric strong{font-size:38px}.metric small{font-size:14px}
+.panel>p{font-size:15px}.bar-label,.bar-score,.priority-item p,.decision-box p,.simple-list li{font-size:15px}
+.priority-item b,.decision-box b{font-size:16px}
+.data-table th,.data-table td{font-size:15px}.data-table th{font-size:14px}
+.badge{font-size:14px}.empty-state strong{font-size:20px}.empty-state p{font-size:16px}
+.field>span,.individual-tools .field{font-size:17px}.report-head p{font-size:16px!important}.report-score{font-size:36px}
+.method-card h3{font-size:19px}.method-card p,.method-card li,.scale-row{font-size:15px}
+.toast{font-size:16px}
+@media(max-width:800px){.hero h1{font-size:40px}.section-heading h2{font-size:29px}.tab{font-size:16px}.top-actions .button{font-size:15px}.question-text{font-size:18px}.choice span{font-size:15px}.bar-label,.bar-score{font-size:14px}}
+@media(max-width:480px){.brand strong{font-size:16px}.brand small{font-size:13px}.top-actions .button{font-size:14px;padding:10px 12px}.hero h1{font-size:35px}.tab{font-size:15px}.section-heading h2{font-size:27px}.question-text{font-size:17px}.choice span{font-size:14px;padding:11px 12px}.field{font-size:15px}input:not([type=checkbox]),select,textarea{font-size:16px}.needs-grid label span{font-size:14px}}
