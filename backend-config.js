@@ -1,3 +1,2 @@
-// Add the deployed Google Apps Script web app URL here after deployment.
-// Keep this value empty until the endpoint is live and verified.
-window.COMMS_BACKEND_URL = '';
+// Google Apps Script web app endpoint used for centralized survey submissions and dashboard reads.
+window.COMMS_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbxdjset4rT9QV7ap8giz81hIPcJub0kQJyf-6Rg8qF89RuLLlJEgI0O9wwFJ5bcdDM/exec';
