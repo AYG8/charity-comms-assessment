@@ -7,3 +7,32 @@
 .small-metric{font-size:16px!important;line-height:1.5!important}
 
 .survey-only-main{max-width:1000px;padding-top:34px}.standalone-heading{align-items:center;margin-bottom:23px}.standalone-heading h2{margin-bottom:7px}.survey-only-main footer{margin-top:36px}
+
+/* تحسين قابلية القراءة: تكبير النصوص الأساسية والمساعدة */
+body{font-size:16px}
+.brand strong{font-size:17px}.brand small{font-size:13px}
+.privacy-tag{font-size:13px}
+.button{font-size:15px;padding:12px 18px}
+.hero h1{font-size:42px}.hero-copy>p:not(.eyebrow){font-size:16px}.hero .eyebrow,.eyebrow{font-size:13px}
+.hero-note{font-size:13px}.hero-note span{font-size:12px}
+.tab{font-size:15px}.tab span{font-size:12px}
+.section-heading h2{font-size:29px}.section-heading p:not(.eyebrow){font-size:15px}
+.progress-caption{font-size:13px}
+.card-title h3{font-size:18px}.card-title p{font-size:13px}
+.field{font-size:14px}input:not([type=checkbox]),select,textarea{font-size:14px;padding:13px 14px}
+.question-text{font-size:15px}.question-text small{font-size:12px}
+.weight{font-size:12px}.choice span{font-size:13px;padding:10px 12px}
+.needs-field legend{font-size:14px}.needs-grid label span{font-size:13px;min-height:46px}
+.consent{font-size:13px}.submit-row #formMessage{font-size:13px}
+footer{font-size:12px}
+.metric span{font-size:13px}.metric strong{font-size:34px}.metric small{font-size:12px}
+.panel h3{font-size:18px}.panel>p{font-size:13px}
+.bar-label,.bar-score,.priority-item p,.decision-box p,.simple-list li{font-size:13px}
+.priority-item b,.decision-box b{font-size:14px}
+.data-table th,.data-table td{font-size:13px}.data-table th{font-size:12px}
+.badge{font-size:12px}.empty-state strong{font-size:18px}.empty-state p{font-size:14px}
+.field>span,.individual-tools .field{font-size:14px}.report-head p{font-size:14px!important}.report-score{font-size:32px}
+.method-card h3{font-size:17px}.method-card p,.method-card li,.scale-row{font-size:13px}
+.toast{font-size:14px}
+@media(max-width:800px){.hero h1{font-size:36px}.section-heading h2{font-size:26px}.tab{font-size:14px}.top-actions .button{font-size:13px}.question-text{font-size:15px}.choice span{font-size:13px}.bar-label,.bar-score{font-size:12px}}
+@media(max-width:480px){.brand strong{font-size:14px}.brand small{font-size:11px}.top-actions .button{font-size:12px;padding:9px 11px}.hero h1{font-size:32px}.tab{font-size:13px}.section-heading h2{font-size:24px}.question-text{font-size:14px}.choice span{font-size:12px;padding:9px 10px}.field{font-size:13px}input:not([type=checkbox]),select,textarea{font-size:14px}.needs-grid label span{font-size:12px}}
