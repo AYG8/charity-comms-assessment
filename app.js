@@ -3,7 +3,7 @@ const STORAGE_KEY = 'asirkhayrati_comms_assessments_v1';
 const SYNCED_KEY = 'asirkhayrati_comms_synced_v1';
 let remoteWriteQueue = Promise.resolve();
 const BACKEND_URL = String(window.COMMS_BACKEND_URL || '').trim();
-let dashboardReadKey = sessionStorage.getItem('comms_dashboard_read_key') || '';
+let dashboardReadKey = '';
 let remoteSyncInProgress = false;
 let remoteSyncDone = false;
 let dashboardUnlocked = false;
@@ -68,7 +68,7 @@ function syncedMap(){try{return JSON.parse(localStorage.getItem(SYNCED_KEY)||'{}
 function queueRemoteRecord(record){remoteWriteQueue=remoteWriteQueue.then(async()=>{const result=await sendRemoteRecord(record);if(result.ok){const sent=syncedMap();sent[record.key]=record.updatedAt;localStorage.setItem(SYNCED_KEY,JSON.stringify(sent))}return result});return remoteWriteQueue}
 function syncPendingRecords(){if(!BACKEND_URL)return;const sent=syncedMap();const pending=records.filter(r=>r?.key&&r?.orgName&&r?.city&&r?.answers&&sent[r.key]!==r.updatedAt);for(const record of pending)queueRemoteRecord(record)}
 const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent=BACKEND_URL?'الربط المركزي مهيأ؛ جارٍ التحقق':'الربط المركزي غير مفعّل';
-document.getElementById('refreshRemote')?.addEventListener('click',()=>{if(!BACKEND_URL){toast('لم يُضف رابط قاعدة البيانات بعد.');return}const input=document.getElementById('dashboardKey');dashboardReadKey=String(input?.value||dashboardReadKey).trim();if(!dashboardReadKey){toast('أدخل رمز لوحة التحليل الذي أعددته في Google Apps Script.');input?.focus();return}sessionStorage.setItem('comms_dashboard_read_key',dashboardReadKey);remoteSyncDone=false;fetchRemoteRecords().then(ok=>{if(syncStatus)syncStatus.textContent=ok?'تم تحديث البيانات المركزية':'تعذر الاتصال أو رمز الدخول غير صحيح';toast(ok?'تم تحديث لوحة التحليل من البيانات المركزية.':'تعذر تحديث البيانات؛ تحقق من الرابط ورمز الدخول.')})});
+document.getElementById('refreshRemote')?.addEventListener('click',()=>{if(!BACKEND_URL){toast('لم يُضف رابط قاعدة البيانات بعد.');return}const input=document.getElementById('dashboardKey');dashboardReadKey=String(input?.value||dashboardReadKey).trim();if(!dashboardReadKey){toast('أدخل رمز لوحة التحليل الذي أعددته في Google Apps Script.');input?.focus();return}remoteSyncDone=false;fetchRemoteRecords().then(ok=>{if(syncStatus)syncStatus.textContent=ok?'تم تحديث البيانات المركزية':'تعذر الاتصال أو رمز الدخول غير صحيح';toast(ok?'تم تحديث لوحة التحليل من البيانات المركزية.':'تعذر تحديث البيانات؛ تحقق من الرابط ورمز الدخول.')})});
 function esc(v=''){return String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function arabicNum(n){return new Intl.NumberFormat('ar-SA',{maximumFractionDigits:1}).format(n)}
 function buildQuestions(){document.getElementById('questionGroups').innerHTML=groups.map((g,gi)=>`<section class="question-group"><header class="group-head"><span class="group-number">${arabicNum(gi+1)}</span><div><h3>${esc(g.name)}</h3><p>${esc(g.plan)}</p></div><span class="weight">وزن المحور ${arabicNum(g.weight)}٪</span></header>${g.items.map((item,qi)=>`<div class="question"><div class="question-text">${esc(item[0])}${item[1]?`<small>${esc(item[1])}</small>`:''}</div><div class="choices" role="radiogroup" aria-label="${esc(item[0])}">${scale.map((s,si)=>`<label class="choice"><input type="radio" name="${g.id}_${qi}" value="${s.value}" aria-label="${s.label}" ${si===0?'required':''}><span>${s.label}</span></label>`).join('')}</div></div>`).join('')}</section>`).join('')}
