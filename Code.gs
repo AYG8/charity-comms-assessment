@@ -50,12 +50,13 @@ function doPost(e) {
     result = { ok: false, error: String(err && err.message || err) };
   }
 
-  // The parent survey page listens for this nonce-bound message from its
-  // hidden form iframe; the Google-origin response itself is never rendered.
+  // Relay the nonce-bound result through the frame chain. Apps Script may
+  // wrap HtmlService output in one or more sandbox frames before it reaches
+  // the survey page, so notifying only `top` is not reliable in every browser.
   const nonce = String((e && e.parameter && e.parameter.nonce) || '').replace(/[^0-9A-Za-z_-]/g, '');
   const message = JSON.stringify({ type: 'assessment-save', nonce: nonce, result: result })
     .replace(/</g, '\\u003c');
-  const html = '<!doctype html><meta charset="utf-8"><script>top.postMessage(' + message + ', "*");</script>';
+  const html = '<!doctype html><meta charset="utf-8"><script>(function(){var message=' + message + ';var current=window;for(var i=0;i<8;i++){if(current.parent===current)break;current=current.parent;current.postMessage(message,"*");}})();</script>';
   return HtmlService.createHtmlOutput(html);
 }
 
