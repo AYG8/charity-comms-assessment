@@ -65,3 +65,23 @@ footer{font-size:14px}
 @media(max-width:800px){.hero h1{font-size:40px}.section-heading h2{font-size:29px}.tab{font-size:16px}.top-actions .button{font-size:15px}.question-text{font-size:18px}.choice span{font-size:15px}.bar-label,.bar-score{font-size:14px}}
 @media(max-width:480px){.brand strong{font-size:16px}.brand small{font-size:13px}.top-actions .button{font-size:14px;padding:10px 12px}.hero h1{font-size:35px}.tab{font-size:15px}.section-heading h2{font-size:27px}.question-text{font-size:17px}.choice span{font-size:14px;padding:11px 12px}.field{font-size:15px}input:not([type=checkbox]),select,textarea{font-size:16px}.needs-grid label span{font-size:14px}}
 @media(max-width:520px){.topbar{height:auto;min-height:82px;flex-direction:column;justify-content:center;gap:8px;padding:10px 12px}.brand{width:100%;justify-content:center}.brand strong,.brand small{text-align:center}.top-actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.top-actions #dashboardKey{grid-column:1/-1;width:100%!important;min-width:0}.top-actions .button,.top-actions .file-button{width:100%;min-width:0;white-space:nowrap}.top-actions .button:only-child{grid-column:1/-1}.partners-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-height:74px;padding:8px 12px}.partners-strip img{justify-self:center;height:auto;max-height:60px;max-width:100%;width:auto}.partners-divider{display:none}}
+/* تقرير شامل قابل للطباعة والحفظ بصيغة PDF */
+#pdfReport{display:none}
+@media print{
+ body.printing-all>*:not(#pdfReport){display:none!important}
+ body.printing-all #pdfReport{display:block!important;direction:rtl;color:#152a27;background:#fff;font:12pt/1.65 Arial,Tahoma,sans-serif}
+ body.printing-all #pdfReport .pdf-page{display:block;min-height:250mm;padding:0 2mm 8mm;break-after:page;page-break-after:always}
+ body.printing-all #pdfReport .pdf-page:last-child{break-after:auto;page-break-after:auto}
+ body.printing-all #pdfReport h1{font-size:23pt;color:#113b35;margin:5mm 0 2mm}
+ body.printing-all #pdfReport h2{font-size:15pt;color:#176559;margin:7mm 0 2mm;border-bottom:1px solid #d6e4df;padding-bottom:1mm}
+ body.printing-all #pdfReport p{margin:2mm 0}
+ body.printing-all #pdfReport .eyebrow{font-size:10pt;color:#58736d}
+ body.printing-all #pdfReport .pdf-callout{margin:5mm 0;padding:4mm;border:1px solid #bad5ca;background:#f0f7f4;border-radius:3mm}
+ body.printing-all #pdfReport table{width:100%;border-collapse:collapse;margin:2mm 0 5mm;font-size:10.5pt}
+ body.printing-all #pdfReport th,body.printing-all #pdfReport td{border:1px solid #cbd8d4;padding:2mm;text-align:right;vertical-align:top}
+ body.printing-all #pdfReport th{background:#eaf2ef;color:#173c35}
+ body.printing-all #pdfReport ul{padding-right:7mm}
+ body.printing-all #pdfReport li{margin:2mm 0}
+ body.printing-all #pdfReport .pdf-note{margin-top:7mm;padding-top:2mm;border-top:1px solid #d6e4df;font-size:9.5pt;color:#52645f}
+ @page{size:A4;margin:14mm}
+}
