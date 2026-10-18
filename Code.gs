@@ -1,17 +1,17 @@
 /**
  * Shared response store for the Asir charity communications assessment.
  * Deploy as a web app that runs as the deploying account and is accessible
- * to anyone. The spreadsheet is private to the deploying account.
+ * to anyone. This creates a private Google Sheet owned by the deployer.
+ * The public web app accepts survey submissions and exposes aggregate-source
+ * records because the companion GitHub Pages dashboard is public.
  */
 const SHEET_NAME = 'الاستجابات';
 const PROP_KEY = 'ASSESSMENT_SPREADSHEET_ID';
-const LOCK_TIMEOUT_MS = 5000;
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'health';
   const callback = (e && e.parameter && e.parameter.callback) || '';
   let payload;
-
   try {
     if (action === 'health') {
       payload = { ok: true, service: 'charity-comms-assessment' };
@@ -33,117 +33,58 @@ function doGet(e) {
     return ContentService.createTextOutput(callback + '(' + json + ');')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
-
-  return ContentService.createTextOutput(json)
-    .setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(json).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
   let result = { ok: false, error: 'invalid_request' };
-
   try {
     const raw = e && e.parameter && e.parameter.record;
     const record = raw ? JSON.parse(raw) : null;
-
     if (!record || !record.orgName || !record.city || !record.answers || !record.key) {
       throw new Error('الاستجابة غير مكتملة');
     }
-
-    const normalizedRecord = {
-      ...record,
-      id: String(record.id || Utilities.getUuid()),
-      updatedAt: String(record.updatedAt || new Date().toISOString())
-    };
-    saveRecord_(normalizedRecord);
-    result = {
-      ok: true,
-      id: normalizedRecord.id,
-      updatedAt: normalizedRecord.updatedAt
-    };
+    saveRecord_(record);
+    result = { ok: true, id: record.id, updatedAt: record.updatedAt };
   } catch (err) {
     result = { ok: false, error: String(err && err.message || err) };
   }
 
-  // Apps Script may wrap HtmlService output in sandbox frames. Relay the
-  // nonce-bound result through each ancestor so the survey page can receive it.
-  const nonce = String((e && e.parameter && e.parameter.nonce) || '')
-    .replace(/[^0-9A-Za-z_-]/g, '');
-  const message = JSON.stringify({
-    type: 'assessment-save',
-    nonce: nonce,
-    result: result
-  }).replace(/</g, '\\u003c');
-
-  const html =
-    '<!doctype html><meta charset="utf-8"><script>' +
-    '(function(){' +
-    'var message=' + message + ';' +
-    'var current=window;' +
-    'for(var i=0;i<8;i++){' +
-    'if(current.parent===current)break;' +
-    'current=current.parent;' +
-    'current.postMessage(message,"*");' +
-    '}' +
-    '})();' +
-    '</script>';
-
+  // The parent survey page listens for this nonce-bound message from its
+  // hidden form iframe; the Google-origin response itself is never rendered.
+  const nonce = String((e && e.parameter && e.parameter.nonce) || '').replace(/[^0-9A-Za-z_-]/g, '');
+  const message = JSON.stringify({ type: 'assessment-save', nonce: nonce, result: result })
+    .replace(/</g, '\\u003c');
+  const html = '<!doctype html><meta charset="utf-8"><script>parent.postMessage(' + message + ', "*");</script>';
   return HtmlService.createHtmlOutput(html);
 }
 
 function saveRecord_(record) {
   const lock = LockService.getScriptLock();
-
-  // Do not leave the submitter waiting for a long lock queue. They can retry
-  // after checking the dashboard if another write briefly holds the lock.
-  if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
-    throw new Error('الخدمة مشغولة مؤقتًا؛ تحقق من لوحة التحليل قبل إعادة الإرسال.');
-  }
-
+  lock.waitLock(20000);
   try {
-    const cleanRecord = {
-      ...record,
-      id: String(record.id || Utilities.getUuid()),
-      key: String(record.key),
-      orgName: String(record.orgName),
-      city: String(record.city),
-      updatedAt: String(record.updatedAt || new Date().toISOString())
-    };
-    const serialized = JSON.stringify(cleanRecord);
     const sheet = getSheet_();
-    const lastRow = sheet.getLastRow();
-
-    let existingRow = null;
-    if (lastRow > 1) {
-      existingRow = sheet
-        .getRange(2, 2, lastRow - 1, 1)
-        .createTextFinder(cleanRecord.key)
-        .matchEntireCell(true)
-        .findNext();
-    }
-
-    const rowValues = [[
-      cleanRecord.id,
-      cleanRecord.key,
-      cleanRecord.orgName,
-      cleanRecord.city,
-      cleanRecord.updatedAt,
-      serialized
-    ]];
-
-    if (existingRow) {
-      const rowNumber = existingRow.getRow();
-      const previous = sheet.getRange(rowNumber, 1, 1, 6).getValues()[0];
-      const oldTime = new Date(previous[4] || 0).getTime();
-      const newTime = new Date(cleanRecord.updatedAt).getTime();
-
-      if (newTime >= oldTime) {
-        // One range write replaces several separate Sheets service calls.
-        sheet.getRange(rowNumber, 1, 1, 6).setValues(rowValues);
+    const rows = sheet.getDataRange().getValues();
+    const key = String(record.key);
+    const serialized = JSON.stringify(record);
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][1]) === key) {
+        const oldTime = new Date(rows[i][4] || 0).getTime();
+        const newTime = new Date(record.updatedAt || Date.now()).getTime();
+        if (newTime >= oldTime) {
+          sheet.getRange(i + 1, 1, 1, 4).setValues([[
+            String(record.id), key, String(record.orgName), String(record.city),
+          ]]);
+          sheet.getRange(i + 1, 5).setValue(String(record.updatedAt || new Date().toISOString()));
+          sheet.getRange(i + 1, 6).setValue(serialized);
+        }
+        return;
       }
-      return;
     }
-
-    sheet.getRange(lastRow + 1, 1, 1, 6).setValues(rowValues);
+    sheet.appendRow([
+      String(record.id), key, String(record.orgName), String(record.city),
+      String(record.updatedAt || new Date().toISOString()), serialized,
+    ]);
   } finally {
     lock.releaseLock();
   }
@@ -152,13 +93,8 @@ function saveRecord_(record) {
 function readRecords_() {
   const sheet = getSheet_();
   const values = sheet.getDataRange().getValues();
-
   return values.slice(1).map(row => {
-    try {
-      return JSON.parse(String(row[5] || ''));
-    } catch (_) {
-      return null;
-    }
+    try { return JSON.parse(String(row[5] || '')); } catch (_) { return null; }
   }).filter(Boolean);
 }
 
@@ -166,32 +102,17 @@ function getSheet_() {
   const props = PropertiesService.getScriptProperties();
   let id = props.getProperty(PROP_KEY);
   let spreadsheet;
-
   if (id) {
     spreadsheet = SpreadsheetApp.openById(id);
   } else {
-    spreadsheet = SpreadsheetApp.create(
-      'استطلاع جاهزية العلاقات العامة والإعلام والاتصال المؤسسي - عسير'
-    );
+    spreadsheet = SpreadsheetApp.create('استطلاع جاهزية العلاقات العامة والإعلام والاتصال المؤسسي - عسير');
     props.setProperty(PROP_KEY, spreadsheet.getId());
   }
-
   let sheet = spreadsheet.getSheetByName(SHEET_NAME);
-  if (!sheet) {
-    sheet = spreadsheet.getSheets()[0].setName(SHEET_NAME);
-  }
-
+  if (!sheet) sheet = spreadsheet.getSheets()[0].setName(SHEET_NAME);
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow([
-      'معرف الاستجابة',
-      'مفتاح الجمعية',
-      'اسم الجمعية',
-      'المحافظة',
-      'آخر تحديث',
-      'بيانات الاستجابة'
-    ]);
+    sheet.appendRow(['معرف الاستجابة', 'مفتاح الجمعية', 'اسم الجمعية', 'المحافظة', 'آخر تحديث', 'بيانات الاستجابة']);
     sheet.setFrozenRows(1);
   }
-
   return sheet;
 }
