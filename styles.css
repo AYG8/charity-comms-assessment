@@ -64,3 +64,4 @@ footer{font-size:14px}
 .toast{font-size:16px}
 @media(max-width:800px){.hero h1{font-size:40px}.section-heading h2{font-size:29px}.tab{font-size:16px}.top-actions .button{font-size:15px}.question-text{font-size:18px}.choice span{font-size:15px}.bar-label,.bar-score{font-size:14px}}
 @media(max-width:480px){.brand strong{font-size:16px}.brand small{font-size:13px}.top-actions .button{font-size:14px;padding:10px 12px}.hero h1{font-size:35px}.tab{font-size:15px}.section-heading h2{font-size:27px}.question-text{font-size:17px}.choice span{font-size:14px;padding:11px 12px}.field{font-size:15px}input:not([type=checkbox]),select,textarea{font-size:16px}.needs-grid label span{font-size:14px}}
+@media(max-width:520px){.partners-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;min-height:74px;padding:8px 12px}.partners-strip img{justify-self:center;height:auto;max-height:60px;max-width:100%;width:auto}.partners-divider{display:none}}
