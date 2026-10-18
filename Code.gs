@@ -55,7 +55,7 @@ function doPost(e) {
   const nonce = String((e && e.parameter && e.parameter.nonce) || '').replace(/[^0-9A-Za-z_-]/g, '');
   const message = JSON.stringify({ type: 'assessment-save', nonce: nonce, result: result })
     .replace(/</g, '\\u003c');
-  const html = '<!doctype html><meta charset="utf-8"><script>parent.postMessage(' + message + ', "*");</script>';
+  const html = '<!doctype html><meta charset="utf-8"><script>top.postMessage(' + message + ', "*");</script>';
   return HtmlService.createHtmlOutput(html);
 }
 
