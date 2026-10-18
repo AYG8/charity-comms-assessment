@@ -143,7 +143,7 @@ function saveRecord_(record) {
       return;
     }
 
-    sheet.appendRow(rowValues[0]);
+    sheet.getRange(lastRow + 1, 1, 1, 6).setValues(rowValues);
   } finally {
     lock.releaseLock();
   }
