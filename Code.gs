@@ -29,7 +29,7 @@ function doGet(e) {
   }
 
   const json = JSON.stringify(payload).replace(/</g, '\\u003c');
-  if (callback && /^[A-Za-z_$][0-9A-Za-z_$]*(\\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
+  if (callback && /^[A-Za-z_$][0-9A-Za-z_$]*(\.[A-Za-z_$][0-9A-Za-z_$]*)*$/.test(callback)) {
     return ContentService.createTextOutput(callback + '(' + json + ');')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
@@ -49,11 +49,16 @@ function doPost(e) {
       throw new Error('الاستجابة غير مكتملة');
     }
 
-    saveRecord_(record);
+    const normalizedRecord = {
+      ...record,
+      id: String(record.id || Utilities.getUuid()),
+      updatedAt: String(record.updatedAt || new Date().toISOString())
+    };
+    saveRecord_(normalizedRecord);
     result = {
       ok: true,
-      id: record.id || '',
-      updatedAt: record.updatedAt || new Date().toISOString()
+      id: normalizedRecord.id,
+      updatedAt: normalizedRecord.updatedAt
     };
   } catch (err) {
     result = { ok: false, error: String(err && err.message || err) };
