@@ -1,7 +1,6 @@
 'use strict';
 const STORAGE_KEY = 'asirkhayrati_comms_assessments_v1';
 const SYNCED_KEY = 'asirkhayrati_comms_synced_v1';
-let remoteWriteQueue = Promise.resolve();
 const BACKEND_URL = String(window.COMMS_BACKEND_URL || '').trim();
 let dashboardReadKey = '';
 let remoteSyncInProgress = false;
@@ -63,10 +62,98 @@ function loadRecords(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)|
 function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records))}
 function mergeRemoteRecords(incoming){if(!Array.isArray(incoming))return false;let changed=false;for(const r of incoming){if(!r?.orgName||!r?.city||!r?.answers)continue;const key=r.key||String(r.orgName).toLocaleLowerCase('ar').replace(/[\sـ]/g,'');const existing=records.find(x=>x.key===key);if(existing){if(new Date(r.updatedAt||0)>new Date(existing.updatedAt||0)){records=records.map(x=>x.key===key?{...r,key,id:existing.id||r.id}:x);changed=true}}else{records.push({...r,key,id:r.id||crypto.randomUUID()});changed=true}}if(changed)persist();return changed}
 function fetchRemoteRecords(){if(!BACKEND_URL||!dashboardReadKey||remoteSyncInProgress)return Promise.resolve(false);remoteSyncInProgress=true;return new Promise(resolve=>{const callback='__commsRemote_'+crypto.randomUUID().replaceAll('-','');const script=document.createElement('script');let settled=false;const finish=ok=>{if(settled)return;settled=true;clearTimeout(timer);delete window[callback];script.remove();remoteSyncInProgress=false;remoteSyncDone=ok;if(syncStatus)syncStatus.textContent=ok?'البيانات متصلة ومحدثة':'تعذر الاتصال/رمز الدخول غير صحيح';resolve(ok)};window[callback]=payload=>{if(payload?.ok){dashboardUnlocked=true;mergeRemoteRecords(payload.records);renderAll();finish(true)}else finish(false)};script.onerror=()=>finish(false);const timer=setTimeout(()=>finish(false),15000);script.src=BACKEND_URL+(BACKEND_URL.includes('?')?'&':'?')+'action=list&callback='+encodeURIComponent(callback)+'&key='+encodeURIComponent(dashboardReadKey)+'&t='+Date.now();document.head.appendChild(script)})}
-function sendRemoteRecord(record){if(!BACKEND_URL)return Promise.resolve({ok:false,unconfigured:true});return new Promise(resolve=>{const frame=document.createElement('iframe');const nonce=crypto.randomUUID().replaceAll('-','');const target='comms-submit-'+nonce;frame.name=target;frame.title='إرسال تقييم الجمعية';frame.hidden=true;document.body.appendChild(frame);const form=document.createElement('form');form.method='POST';form.action=BACKEND_URL;form.target=target;form.acceptCharset='UTF-8';form.hidden=true;const fields={record:JSON.stringify(record),nonce};for(const [name,value] of Object.entries(fields)){const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input)}const timer=setTimeout(()=>finish({ok:false,timeout:true}),12000);function finish(result){clearTimeout(timer);window.removeEventListener('message',onMessage);form.remove();frame.remove();resolve(result)}function onMessage(event){if(event.data?.type!=='assessment-save'||event.data?.nonce!==nonce)return;finish(event.data.result||{ok:false})}window.addEventListener('message',onMessage);document.body.appendChild(form);form.submit()})}
+function markRecordSynced(record){
+ try{
+  const sent=syncedMap();
+  const previous=sent[record.key];
+  if(!previous||new Date(record.updatedAt||0)>=new Date(previous||0)){
+   sent[record.key]=record.updatedAt;
+   localStorage.setItem(SYNCED_KEY,JSON.stringify(sent));
+  }
+ }catch(_){}
+}
+function sendRemoteRecord(record){
+ if(!BACKEND_URL)return Promise.resolve({ok:false,unconfigured:true});
+ return new Promise(resolve=>{
+  const frame=document.createElement('iframe');
+  const nonce=crypto.randomUUID().replaceAll('-','');
+  const target='comms-submit-'+nonce;
+  frame.name=target;
+  frame.title='إرسال تقييم الجمعية';
+  frame.hidden=true;
+  document.body.appendChild(frame);
+  const form=document.createElement('form');
+  form.method='POST';
+  form.action=BACKEND_URL;
+  form.target=target;
+  form.acceptCharset='UTF-8';
+  form.hidden=true;
+  for(const [name,value] of Object.entries({record:JSON.stringify(record),nonce})){
+   const input=document.createElement('input');
+   input.type='hidden';
+   input.name=name;
+   input.value=value;
+   form.appendChild(input);
+  }
+  let settled=false;
+  let cleaned=false;
+  let responseTimer;
+  let cleanupTimer;
+  function cleanup(){
+   if(cleaned)return;
+   cleaned=true;
+   clearTimeout(responseTimer);
+   clearTimeout(cleanupTimer);
+   window.removeEventListener('message',onMessage);
+   form.remove();
+   frame.remove();
+  }
+  function onMessage(event){
+   if(event.data?.type!=='assessment-save'||event.data?.nonce!==nonce)return;
+   const result=event.data.result||{ok:false};
+   if(result.ok)markRecordSynced(record);
+   if(!settled){
+    settled=true;
+    clearTimeout(responseTimer);
+    resolve(result);
+   }
+   cleanup();
+  }
+  window.addEventListener('message',onMessage);
+  document.body.appendChild(form);
+  responseTimer=setTimeout(()=>{
+   if(!settled){
+    settled=true;
+    resolve({ok:false,timeout:true});
+   }
+  },60000);
+  // Keep the request alive after a UI timeout; a late acknowledgement can
+  // still mark the record synced. Clean up the hidden frame after three minutes.
+  cleanupTimer=setTimeout(cleanup,180000);
+  try{
+   form.submit();
+  }catch(error){
+   if(!settled){
+    settled=true;
+    resolve({ok:false,error:String(error&&error.message||error)});
+   }
+   cleanup();
+  }
+ });
+}
 function beginRemoteSync(){if(BACKEND_URL&&dashboardReadKey&&!remoteSyncDone&&document.getElementById('dashboardContent'))fetchRemoteRecords()}
 function syncedMap(){try{return JSON.parse(localStorage.getItem(SYNCED_KEY)||'{}')}catch{return {}}}
-function queueRemoteRecord(record){remoteWriteQueue=remoteWriteQueue.then(async()=>{const result=await sendRemoteRecord(record);if(result.ok){const sent=syncedMap();sent[record.key]=record.updatedAt;localStorage.setItem(SYNCED_KEY,JSON.stringify(sent))}return result});return remoteWriteQueue}
+function queueRemoteRecord(record,attempt=0){
+ return sendRemoteRecord(record).then(result=>{
+  if(result.ok){markRecordSynced(record);return result}
+  const retryable=result.timeout||/مشغولة|مؤقتًا/.test(String(result.error||''));
+  if(attempt<2&&retryable){
+   const delay=attempt===0?1000:2500;
+   return new Promise(resolve=>setTimeout(resolve,delay)).then(()=>queueRemoteRecord(record,attempt+1));
+  }
+  return result;
+ });
+}
 function syncPendingRecords(){if(!BACKEND_URL)return;const sent=syncedMap();const pending=records.filter(r=>r?.key&&r?.orgName&&r?.city&&r?.answers&&sent[r.key]!==r.updatedAt);for(const record of pending)queueRemoteRecord(record)}
 const syncStatus=document.getElementById('syncStatus');if(syncStatus)syncStatus.textContent=BACKEND_URL?'الربط المركزي مهيأ؛ جارٍ التحقق':'الربط المركزي غير مفعّل';
 document.getElementById('refreshRemote')?.addEventListener('click',()=>{if(!BACKEND_URL){toast('لم يُضف رابط قاعدة البيانات بعد.');return}const input=document.getElementById('dashboardKey');dashboardReadKey=String(input?.value||dashboardReadKey).trim();if(!dashboardReadKey){toast('أدخل رمز لوحة التحليل الذي أعددته في Google Apps Script.');input?.focus();return}remoteSyncDone=false;fetchRemoteRecords().then(ok=>{if(syncStatus)syncStatus.textContent=ok?'تم تحديث البيانات المركزية':'تعذر الاتصال أو رمز الدخول غير صحيح';toast(ok?'تم تحديث لوحة التحليل من البيانات المركزية.':'تعذر تحديث البيانات؛ تحقق من الرابط ورمز الدخول.')})});
@@ -110,7 +197,52 @@ document.addEventListener('click',e=>{const v=e.target.closest('[data-view]');if
 form.addEventListener('change',updateProgress);form.addEventListener('input',updateProgress);
 form.addEventListener('invalid',e=>{const target=e.target;if(target instanceof HTMLInputElement&&target.type==='radio'&&target.required){const text='لم يُرسل التقييم لوجود أسئلة بلا إجابة. أجب عن جميع الأسئلة المطلوبة ثم اضغط «حفظ التقييم».';document.getElementById('formMessage').textContent=text;toast(text,6500);target.closest('.question')?.scrollIntoView({behavior:'smooth',block:'center'});}},true);
 function updateProgress(){const total=groups.reduce((a,g)=>a+g.items.length,0)+2;let done=0;groups.forEach(g=>g.items.forEach((_,i)=>{if(form.querySelector(`input[name="${g.id}_${i}"]:checked`))done++}));['orgName','city'].forEach(k=>{if(form.elements[k].value.trim())done++});const p=Math.round(done/total*100);document.getElementById('progressValue').textContent=arabicNum(p)+'٪';document.getElementById('progressBar').style.width=p+'%'}
-form.addEventListener('submit',e=>{e.preventDefault();if(!form.reportValidity())return;const fd=new FormData(form);const name=String(fd.get('orgName')).trim();const key=name.toLocaleLowerCase('ar').replace(/[\sـ]/g,'');const old=records.find(r=>r.key===key);const rec={id:old?.id||crypto.randomUUID(),key,orgName:name,city:String(fd.get('city')),respondentRole:String(fd.get('respondentRole')||''),teamSize:String(fd.get('teamSize')||''),answers:getAnswers(),needs:fd.getAll('needs').map(String),barrier:String(fd.get('barrier')||''),notes:String(fd.get('notes')||'').trim(),updatedAt:new Date().toISOString()};if(old)records=records.map(r=>r.id===old.id?rec:r);else records.push(rec);try{persist()}catch{document.getElementById('formMessage').textContent='تعذر الحفظ؛ قد تكون مساحة المتصفح ممتلئة.';return}const message=document.getElementById('formMessage');if(BACKEND_URL){message.textContent='جارٍ إرسال الإجابة إلى لوحة التحليل المركزية…';toast('تم حفظ الإجابة على الجهاز؛ بدأ إرسالها مركزيًا.',5000);queueRemoteRecord(rec).then(result=>{if(result.ok){message.textContent='تم حفظ التقييم وإرساله إلى لوحة التحليل المركزية.';toast('وصل التقييم إلى لوحة التحليل المركزية.')}else if(result.timeout){message.textContent='تم الإرسال';toast('تم الإرسال')}else{message.textContent='تعذر إرسال التقييم؛ النسخة المحلية محفوظة.';toast('تعذر إرسال التقييم؛ النسخة المحلية محفوظة.')}})}else{message.textContent='حُفظ التقييم في هذا المتصفح فقط؛ الربط المركزي لم يُفعّل بعد.'}if(document.body.dataset.page!=='survey-only'){showView('individual',rec.id,true)}else if(!BACKEND_URL){toast(old?'تم تحديث التقييم في هذا المتصفح.':'تم حفظ التقييم في هذا المتصفح.')}form.reset();updateProgress()});
+form.addEventListener('submit',e=>{
+ e.preventDefault();
+ if(!form.reportValidity())return;
+ const fd=new FormData(form);
+ const name=String(fd.get('orgName')).trim();
+ const key=name.toLocaleLowerCase('ar').replace(/[\sـ]/g,'');
+ const old=records.find(r=>r.key===key);
+ const rec={
+  id:old?.id||crypto.randomUUID(),
+  key,
+  orgName:name,
+  city:String(fd.get('city')),
+  respondentRole:String(fd.get('respondentRole')||''),
+  teamSize:String(fd.get('teamSize')||''),
+  answers:getAnswers(),
+  needs:fd.getAll('needs').map(String),
+  barrier:String(fd.get('barrier')||''),
+  notes:String(fd.get('notes')||'').trim(),
+  updatedAt:new Date().toISOString()
+ };
+ if(old)records=records.map(r=>r.id===old.id?rec:r);
+ else records.push(rec);
+ try{persist()}catch{
+  document.getElementById('formMessage').textContent='تعذر الحفظ؛ قد تكون مساحة المتصفح ممتلئة.';
+  return;
+ }
+ const message=document.getElementById('formMessage');
+ if(BACKEND_URL){
+  const delivery=queueRemoteRecord(rec);
+  message.textContent='تم الإرسال';
+  toast('تم الإرسال');
+  delivery.then(result=>{
+   if(result.ok||result.timeout)return;
+   message.textContent='تعذر الحفظ المركزي؛ الإجابة محفوظة على هذا الجهاز.';
+   toast('تعذر الحفظ المركزي؛ الإجابة محفوظة على هذا الجهاز.');
+  }).catch(()=>{
+   message.textContent='تعذر الحفظ المركزي؛ الإجابة محفوظة على هذا الجهاز.';
+   toast('تعذر الحفظ المركزي؛ الإجابة محفوظة على هذا الجهاز.');
+  });
+ }else{
+  message.textContent='حُفظ التقييم في هذا المتصفح فقط؛ الربط المركزي لم يُفعّل بعد.';
+ }
+ if(document.body.dataset.page!=='survey-only')showView('individual',rec.id,true);
+ form.reset();
+ updateProgress();
+});
 function toast(text,duration=2400){const t=document.getElementById('toast');t.textContent=text;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),duration)}
 function download(filename,content,type){const blob=new Blob([content],{type});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 document.getElementById('exportAll')?.addEventListener('click',()=>{if(!dashboardUnlocked){toast('تحقق من رمز لوحة التحليل أولًا.');return}if(!records.length){toast('لا توجد بيانات للتصدير.');return}download('asirkhayrati-assessments.json',JSON.stringify({schemaVersion:1,exportedAt:new Date().toISOString(),records},null,2),'application/json;charset=utf-8')});

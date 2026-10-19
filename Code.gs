@@ -56,8 +56,18 @@ function doPost(e) {
   const nonce = String((e && e.parameter && e.parameter.nonce) || '').replace(/[^0-9A-Za-z_-]/g, '');
   const message = JSON.stringify({ type: 'assessment-save', nonce: nonce, result: result })
     .replace(/</g, '\\u003c');
-  const html = '<!doctype html><meta charset="utf-8"><script>top.postMessage(' + message + ', "*");</script>';
-  return HtmlService.createHtmlOutput(html);
+  const targetOrigin = 'https://ayg8.github.io';
+  const html = '<!doctype html><meta charset="utf-8"><script>' +
+    '(function(){var payload=' + message + ';var current=window;' +
+    'for(var i=0;i<8&&current.parent!==current;i++){' +
+    'current=current.parent;' +
+    'try{current.postMessage(payload,"https://ayg8.github.io");}catch(_){}}' +
+    '})();</script>';
+  const output = HtmlService.createHtmlOutput(html);
+  // This response must execute inside the survey's cross-origin submit iframe.
+  // The message is restricted to the public GitHub Pages origin above.
+  output.setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return output;
 }
 
 function saveRecord_(record) {
