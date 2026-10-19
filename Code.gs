@@ -7,6 +7,7 @@
  */
 const SHEET_NAME = 'الاستجابات';
 const PROP_KEY = 'ASSESSMENT_SPREADSHEET_ID';
+const LOCK_TIMEOUT_MS = 5000;
 
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) || 'health';
@@ -61,30 +62,59 @@ function doPost(e) {
 
 function saveRecord_(record) {
   const lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  if (!lock.tryLock(LOCK_TIMEOUT_MS)) {
+    throw new Error('الخدمة مشغولة مؤقتًا؛ أعد المحاولة بعد لحظات.');
+  }
+
   try {
+    const requestedTime = record.updatedAt ? new Date(record.updatedAt).getTime() : NaN;
+    const cleanRecord = {
+      ...record,
+      id: String(record.id || Utilities.getUuid()),
+      key: String(record.key),
+      orgName: String(record.orgName),
+      city: String(record.city),
+      updatedAt: Number.isFinite(requestedTime)
+        ? new Date(requestedTime).toISOString()
+        : new Date().toISOString()
+    };
+    const serialized = JSON.stringify(cleanRecord);
     const sheet = getSheet_();
-    const rows = sheet.getDataRange().getValues();
-    const key = String(record.key);
-    const serialized = JSON.stringify(record);
-    for (let i = 1; i < rows.length; i++) {
-      if (String(rows[i][1]) === key) {
-        const oldTime = new Date(rows[i][4] || 0).getTime();
-        const newTime = new Date(record.updatedAt || Date.now()).getTime();
-        if (newTime >= oldTime) {
-          sheet.getRange(i + 1, 1, 1, 4).setValues([[
-            String(record.id), key, String(record.orgName), String(record.city),
-          ]]);
-          sheet.getRange(i + 1, 5).setValue(String(record.updatedAt || new Date().toISOString()));
-          sheet.getRange(i + 1, 6).setValue(serialized);
-        }
-        return;
-      }
+    const lastRow = sheet.getLastRow();
+
+    let existingCell = null;
+    if (lastRow > 1) {
+      existingCell = sheet
+        .getRange(2, 2, lastRow - 1, 1)
+        .createTextFinder(cleanRecord.key)
+        .matchCase(true)
+        .matchEntireCell(true)
+        .useRegularExpression(false)
+        .findNext();
     }
-    sheet.appendRow([
-      String(record.id), key, String(record.orgName), String(record.city),
-      String(record.updatedAt || new Date().toISOString()), serialized,
-    ]);
+
+    const rowValues = [[
+      cleanRecord.id,
+      cleanRecord.key,
+      cleanRecord.orgName,
+      cleanRecord.city,
+      cleanRecord.updatedAt,
+      serialized
+    ]];
+
+    if (existingCell) {
+      const rowNumber = existingCell.getRow();
+      const previousUpdatedAt = sheet.getRange(rowNumber, 5).getValue();
+      const oldTime = new Date(previousUpdatedAt || 0).getTime();
+      const newTime = new Date(cleanRecord.updatedAt).getTime();
+
+      if (!Number.isFinite(oldTime) || newTime >= oldTime) {
+        sheet.getRange(rowNumber, 1, 1, 6).setValues(rowValues);
+      }
+      return;
+    }
+
+    sheet.getRange(lastRow + 1, 1, 1, 6).setValues(rowValues);
   } finally {
     lock.releaseLock();
   }
