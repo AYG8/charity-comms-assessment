@@ -60,7 +60,26 @@ const form = document.getElementById('surveyForm');
 let records = loadRecords();
 function loadRecords(){try{const v=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');return Array.isArray(v)?v:[]}catch{return []}}
 function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records))}
-function mergeRemoteRecords(incoming){if(!Array.isArray(incoming))return false;let changed=false;for(const r of incoming){if(!r?.orgName||!r?.city||!r?.answers)continue;const key=r.key||String(r.orgName).toLocaleLowerCase('ar').replace(/[\sـ]/g,'');const existing=records.find(x=>x.key===key);if(existing){if(new Date(r.updatedAt||0)>new Date(existing.updatedAt||0)){records=records.map(x=>x.key===key?{...r,key,id:existing.id||r.id}:x);changed=true}}else{records.push({...r,key,id:r.id||crypto.randomUUID()});changed=true}}if(changed)persist();return changed}
+function mergeRemoteRecords(incoming){
+ if(!Array.isArray(incoming))return false;
+ const next=incoming.filter(r=>r?.orgName&&r?.city&&r?.answers).map(r=>{
+  const key=r.key||String(r.orgName).toLocaleLowerCase('ar').replace(/[\\sـ]/g,'');
+  return{...r,key,id:r.id||crypto.randomUUID()};
+ });
+ const unchanged=records.length===next.length&&next.every(r=>{
+  const old=records.find(x=>x.key===r.key);
+  return old&&old.updatedAt===r.updatedAt;
+ });
+ // An authenticated central snapshot is authoritative, including deletions.
+ records=next;
+ try{persist()}catch(_){}
+ try{
+  const sent={};
+  for(const r of next)if(r.key&&r.updatedAt)sent[r.key]=r.updatedAt;
+  localStorage.setItem(SYNCED_KEY,JSON.stringify(sent));
+ }catch(_){}
+ return !unchanged;
+}
 function fetchRemoteRecords(){if(!BACKEND_URL||!dashboardReadKey||remoteSyncInProgress)return Promise.resolve(false);remoteSyncInProgress=true;return new Promise(resolve=>{const callback='__commsRemote_'+crypto.randomUUID().replaceAll('-','');const script=document.createElement('script');let settled=false;const finish=ok=>{if(settled)return;settled=true;clearTimeout(timer);delete window[callback];script.remove();remoteSyncInProgress=false;remoteSyncDone=ok;if(syncStatus)syncStatus.textContent=ok?'البيانات متصلة ومحدثة':'تعذر الاتصال/رمز الدخول غير صحيح';resolve(ok)};window[callback]=payload=>{if(payload?.ok){dashboardUnlocked=true;mergeRemoteRecords(payload.records);renderAll();finish(true)}else finish(false)};script.onerror=()=>finish(false);const timer=setTimeout(()=>finish(false),15000);script.src=BACKEND_URL+(BACKEND_URL.includes('?')?'&':'?')+'action=list&callback='+encodeURIComponent(callback)+'&key='+encodeURIComponent(dashboardReadKey)+'&t='+Date.now();document.head.appendChild(script)})}
 function markRecordSynced(record){
  try{
