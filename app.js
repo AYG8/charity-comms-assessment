@@ -63,7 +63,7 @@ function persist(){localStorage.setItem(STORAGE_KEY,JSON.stringify(records))}
 function mergeRemoteRecords(incoming){
  if(!Array.isArray(incoming))return false;
  const next=incoming.filter(r=>r?.orgName&&r?.city&&r?.answers).map(r=>{
-  const key=r.key||String(r.orgName).toLocaleLowerCase('ar').replace(/[\\sـ]/g,'');
+  const key=r.key||String(r.orgName).toLocaleLowerCase('ar').replace(/[\sـ]/g,'');
   return{...r,key,id:r.id||crypto.randomUUID()};
  });
  const unchanged=records.length===next.length&&next.every(r=>{
